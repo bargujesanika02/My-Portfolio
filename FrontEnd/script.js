@@ -4,7 +4,7 @@
    2. Active nav link on scroll
    3. Scroll-reveal animations
    4. Back-to-top button
-   5. Contact form validation
+   5. Contact form validation + Formspree submission
    6. Footer year
    ========================================================= */
 
@@ -126,7 +126,7 @@ function initBackToTop() {
 }
 
 /* ---------------------------------------------------------
-   5. CONTACT FORM VALIDATION
+   5. CONTACT FORM VALIDATION + FORMSPREE SUBMISSION
    --------------------------------------------------------- */
 function initContactForm() {
   const form = document.getElementById('contactForm');
@@ -178,7 +178,7 @@ function initContactForm() {
     });
   });
 
-  form.addEventListener('submit', (event) => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
 
     const fieldNames = Object.keys(fieldRules);
@@ -191,15 +191,43 @@ function initContactForm() {
       return;
     }
 
-    // No backend is connected yet -- this simulates a successful submission.
-    formStatus.textContent = `Thanks, ${form.elements.name.value.trim()}! Your message has been noted.`;
-    formStatus.style.color = '';
-    form.reset();
+    const submitBtn = form.querySelector('.form-submit');
+    const submitterName = form.elements.name.value.trim();
 
-    fieldNames.forEach((fieldName) => {
-      form.elements[fieldName].removeAttribute('aria-invalid');
-      document.getElementById(`${fieldName}Error`).textContent = '';
-    });
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending...';
+    formStatus.textContent = '';
+
+    try {
+      // Send the form data to Formspree. Accept: application/json keeps
+      // Formspree from redirecting us to its own success page, so we can
+      // show our own inline confirmation instead.
+      const response = await fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form),
+        headers: { Accept: 'application/json' },
+      });
+
+      if (response.ok) {
+        formStatus.textContent = `Thanks, ${submitterName}! Your message has been sent.`;
+        formStatus.style.color = '';
+        form.reset();
+
+        fieldNames.forEach((fieldName) => {
+          form.elements[fieldName].removeAttribute('aria-invalid');
+          document.getElementById(`${fieldName}Error`).textContent = '';
+        });
+      } else {
+        formStatus.textContent = 'Something went wrong sending your message. Please try again or email me directly.';
+        formStatus.style.color = '#e0637a';
+      }
+    } catch (error) {
+      formStatus.textContent = 'Network error -- please check your connection and try again.';
+      formStatus.style.color = '#e0637a';
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Send Message';
+    }
   });
 }
 
